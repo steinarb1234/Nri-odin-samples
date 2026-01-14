@@ -2,6 +2,8 @@
 
 This repo contains samples for how to use Nvidia NRI in Odin. 
 
+Copy NRI.dll to the root directory (precompiled in Lib/NRI-odin directory or compile NRI yourself) and SDL3.dll (copy from Odin SDL3 vendor folder).
+
 Dependencies: 
 - [NRI-odin](https://github.com/steinarb1234/NRI-odin)
 - SDL3 vendor library
