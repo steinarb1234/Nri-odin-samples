@@ -47,49 +47,18 @@ Frame :: struct {
 
 NUM_RENDERTARGETS :: 2
 BUFFERED_FRAME_MAX_NUM :: 2
-swapchain_textures : [NUM_RENDERTARGETS]SwapChainTexture
 
-QueuedFrame :: struct {
-    command_allocator: ^nri.CommandAllocator,
-    command_buffer: ^nri.CommandBuffer,
-};
-
-vsync_interval :: true
+vsync_interval :: false
 when vsync_interval {queued_frame_num :: 2}
 else                {queued_frame_num :: 3}
+
+swapchain_textures : [queued_frame_num + 1]SwapChainTexture
 
 window : ^sdl.Window
 window_height : i32 = 768
 window_width  : i32 = 1024
 
 device : ^nri.Device
-
-ConstantBufferLayout :: struct {
-    color: [3]f32,
-    scale: f32,
-}
-
-Mip :: rawptr
-
-AlphaMode :: enum {
-    OPAQUE,
-    PREMULTIPLIED,
-    TRANSPARENT,
-    OFF, // alpha is 0 everywhere
-}
-
-Texture :: struct {
-    name     : cstring,
-    mips     : ^Mip,
-    AlphaMode: AlphaMode,
-    format   : nri.Format,
-    width    : u16,
-    height   : u16,
-    depth    : u16,
-    mipNum   : u16,
-    layerNum : u16,
-}
-
 
 main :: proc() {
     // Init SDL and create window
@@ -179,7 +148,7 @@ main :: proc() {
         queue         = command_queue,
         width         = nri.Dim_t(window_width),
         height        = nri.Dim_t(window_height),
-        textureNum    = 2, // frambuffers
+        textureNum    = queued_frame_num + 1, // frambuffers
         format        = .BT709_G22_8BIT,
         // flags         = SwapChainBits,
         queuedFrameNum= queued_frame_num,
@@ -258,18 +227,13 @@ main :: proc() {
     frame_index : u64 = 0
     game_loop: for {
 
+        queued_frame_index := frame_index % queued_frame_num
+        queued_frame := frames[queued_frame_index]
 		{ // Latency sleep
-			queued_frame_index := frame_index % queued_frame_num
 			wait_value := frame_index >= queued_frame_num ? 1 + frame_index - queued_frame_num : 0
-            // signal_value := frame_index + 1
-            // wait_value : u64 = 0
-            // if frame_index >= queued_frame_num {
-            //     wait_value = frame_index + 1 - queued_frame_num
-            // }
-
 			NRI.Wait(frame_fence, u64(wait_value))
 
-			NRI.ResetCommandAllocator(frames[queued_frame_index].command_allocator)
+			NRI.ResetCommandAllocator(queued_frame.command_allocator)
 		}
 
         { // Handle keyboard and mouse input
@@ -288,11 +252,6 @@ main :: proc() {
                 }
             }
 		}
-        
-        // buffered_frame_index := frame_index % queued_frame_num
-        // frame := frames[buffered_frame_index]
-        queued_frame_index := frame_index % BUFFERED_FRAME_MAX_NUM
-        queued_frame := frames[queued_frame_index]
 
         // Acquire swapchain texture
         recycled_semaphore_index := frame_index % len(swapchain_textures)
@@ -365,12 +324,6 @@ main :: proc() {
                 im.NewFrame()
                 {
                     im.ShowDemoWindow()
-
-                    // im.Begin("Debug window")
-                    //     im.Text("frame: %i", frame_index)
-                    //     // im.Text("FPS: %.1f", fps)
-                    // im.End()
-
                 }
                 im.EndFrame()
                 im.Render()
@@ -451,7 +404,7 @@ main :: proc() {
                 commandBufferNum= 1,
                 signalFences    = &rendering_finished_fence,
                 signalFenceNum  = 1,
-                // swapChain       = swapchain, // required if "NRILowLatency" is enabled in the swap chain
+                swapChain       = swapchain, // required if "NRILowLatency" is enabled in the swap chain
             }
             NRI.QueueSubmit(command_queue, &queue_submit_desc)
         }
