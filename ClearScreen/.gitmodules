@@ -1,0 +1,3 @@
+[submodule "libs/NRI-odin"]
+	path = libs/NRI-odin
+	url = https://github.com/steinarb1234/NRI-odin.git
