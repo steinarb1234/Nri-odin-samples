@@ -38,9 +38,6 @@ Frame :: struct {
     constant_buffer_view_offset   : u64,
 }
 
-NUM_RENDERTARGETS :: 2
-BUFFERED_FRAME_MAX_NUM :: 2
-
 vsync_interval :: false
 when vsync_interval {queued_frame_num :: 2}
 else                {queued_frame_num :: 3}
